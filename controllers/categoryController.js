@@ -22,12 +22,12 @@ exports.deleteCategory = async (req, res) => {
     const category = await getModelByCategory(categoryId);
     await category.collection.drop();
     if (!category) {
-      return res.status(404).json({ message: "Category not found" });
+      return res.status(404).json({ message: "Project not found" });
     }
 
-    res.status(200).json({ message: "Category deleted successfully" });
+    res.status(200).json({ message: "Project deleted successfully" });
   } catch (error) {
-    console.error("Error deleting category:", error);
+    console.error("Error deleting Project:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -41,7 +41,13 @@ exports.addData = async (req, res) => {
     // Use getModelByCategory to get or create the model based on the category
     const DataModel = getModelByCategory(Category);
 
-    // Create a new document using the model, with default values for other fields
+    // Check if a document with the same category already exists
+    const existingData = await DataModel.findOne({ componentName: '1' });
+    if (existingData) {
+      return res.status(409).json({ message: `Data for Project ${Category} already exists`, data: existingData });
+    }
+
+    // Create a new document with default values if no existing document is found
     const newData = new DataModel({
       title: 'Initial',                    // Empty title
       componentName: '1',           // Set componentName as '1'
