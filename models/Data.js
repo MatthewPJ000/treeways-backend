@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const InputSchema = new mongoose.Schema({
   id: { type: Number, required: true }, // Input ID is required
   content: { type: String, default: '' }, // Default value for content
-  value: { type: Number, default: 0 }, // New field for the numeric value with a default of 0
+  value: { type: Number, default: 0 }, // Numeric value with a default of 0
   isAdding: { type: Boolean, required: true }, // isAdding must be true or false
 });
 
@@ -15,8 +15,9 @@ const DataSchema = new mongoose.Schema({
   componentName: { type: String, required: true }, // Include componentName as required
   parentComponentName: { type: String, required: true },
   inputs: [InputSchema], // Array of inputs
-  result: {type: Number, required: true},
-  TotalResult: {type: Number, required: true},
+  result: { type: Number, required: true },
+  TotalResult: { type: Number, required: true },
+  isMaxAbsResult: { type: Boolean, default: false }, // Flag to indicate max absolute TotalResult
 });
 
 // Function to create a model based on the category

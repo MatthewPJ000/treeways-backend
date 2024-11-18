@@ -1,7 +1,31 @@
 const getModelByCategory = require('../models/Data'); // Adjust the path as needed
 
+
+// Add helper function to update max absolute TotalResult
+async function updateMaxAbsTotalResultFlag(DataModel) {
+  // Reset isMaxAbsResult for all documents
+  await DataModel.updateMany({}, { isMaxAbsResult: false });
+
+  // Find the document with the max absolute TotalResult
+  const maxAbsResultDoc = await DataModel.aggregate([
+    { $addFields: { absTotalResult: { $abs: "$TotalResult" } } },
+    { $sort: { absTotalResult: -1 } },
+    { $limit: 1 }
+  ]);
+
+  if (maxAbsResultDoc.length > 0) {
+    // Update isMaxAbsResult for the document with the highest absolute TotalResult
+    await DataModel.updateOne(
+      { _id: maxAbsResultDoc[0]._id },
+      { isMaxAbsResult: true }
+    );
+  }
+}
+
 exports.saveData = async (req, res) => {
-  const { title, inputs, componentName, result } = req.body; 
+  const { title, inputs, componentName, result } = req.body;
+console.log(req.body)
+
   const category = req.params.selectedCategory;
 
   if (!category) {
@@ -19,19 +43,16 @@ exports.saveData = async (req, res) => {
   try {
     const existingDocument = await DataModel.findOne({ componentName });
 
-    // Initialize parent component's TotalResult to zero if it's root
     let parentTotalResult = 0;
-
     if (parentComponentName !== 'root') {
-      // Retrieve the parent component to access its TotalResult
       const parentComponent = await DataModel.findOne({ componentName: parentComponentName });
       parentTotalResult = parentComponent ? parentComponent.TotalResult : 0;
     }
 
-    // Calculate the current component's TotalResult
     const currentTotalResult = parentTotalResult - result;
 
     if (existingDocument) {
+      existingDocument.title = title || existingDocument.title;
       existingDocument.inputs = inputs.map(input => ({
         id: input.id,
         content: input.content || '',
@@ -40,33 +61,42 @@ exports.saveData = async (req, res) => {
       }));
       existingDocument.parentComponentName = parentComponentName;
       existingDocument.result = result;
-      existingDocument.TotalResult = currentTotalResult; // Update TotalResult
+      existingDocument.TotalResult = Math.round(currentTotalResult * 100) / 100;
+
       await existingDocument.save();
-      return res.status(200).json({ message: 'Data updated successfully', data: existingDocument });
+    } else {
+      const newData = new DataModel({
+        title: title || '',
+        componentName: componentName || '',
+        inputs: inputs.map(input => ({
+          id: input.id,
+          content: input.content || 'cost',
+          value: input.value || 0,
+          isAdding: input.isAdding,
+        })),
+        parentComponentName,
+        result,
+        TotalResult: Math.round(currentTotalResult * 100) / 100,
+      });
+
+      await newData.save();
     }
 
-    const newData = new DataModel({
-      title: title || '',
-      componentName: componentName || '',
-      inputs: inputs.map(input => ({
-        id: input.id,
-        content: input.content || '',
-        value: input.value || 0,
-        isAdding: input.isAdding,
-      })),
-      parentComponentName,
-      result,
-      TotalResult: currentTotalResult, // Set TotalResult for new document
-    });
+    // Update isMaxAbsResult for the document with the maximum absolute TotalResult
+    await updateMaxAbsTotalResultFlag(DataModel);
 
-    const savedData = await newData.save();
-    return res.status(201).json({ message: 'Data saved successfully', data: savedData });
+    return res.status(200).json({
+      message: 'Data saved successfully',
+      data: existingDocument || newData
+    });
 
   } catch (error) {
     console.error('Error saving data:', error);
     return res.status(500).json({ message: 'Failed to save data', error });
   }
 };
+
+
 
 
 exports.getAllComponentsByCategory = async (req, res) => {
