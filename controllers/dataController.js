@@ -143,12 +143,7 @@ exports.getComponentByName = async (req, res) => {
   const DataModel = getModelByCategory(category);
 
   try {
-    const component = await DataModel.findOne({ componentName });
-
-    if (!component) {
-      return res.status(404).json({ message: 'Component not found' });
-    }
-
+    const component = await DataModel.findOne({ componentName }); 
     const response = {
       title: component.title,
       inputs: component.inputs.map(input => ({
@@ -160,7 +155,7 @@ exports.getComponentByName = async (req, res) => {
     res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching component:', error);
-    return res.status(500).json({ message: 'Failed to fetch component', error });
+
   }
 };
 

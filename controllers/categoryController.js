@@ -19,6 +19,7 @@ exports.deleteCategory = async (req, res) => {
   const { categoryId } = req.params; // Get the category ID from the URL parameter
 
   try {
+    
     const category = await getModelByCategory(categoryId);
     await category.collection.drop();
     if (!category) {
