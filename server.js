@@ -9,10 +9,7 @@ const app = express();
 
 // Middleware to parse incoming JSON data
 app.use(bodyParser.json()); // Parses incoming requests with JSON payloads
-app.use(cors(
-origin: process.env.FRONTEND_URL,
-credentials: true,
-)); // Enables CORS for all requests
+app.use(cors()); // Enables CORS for all requests
 
 // Connect to MongoDB
 mongoose.connect('mongodb+srv://admin:mc2jhQRy4jP8mZyG@mern-hotel-booking.hq0m3.mongodb.net/?retryWrites=true&w=majority&appName=holidays', {
