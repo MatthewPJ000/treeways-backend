@@ -12,7 +12,7 @@ app.use(bodyParser.json()); // Parses incoming requests with JSON payloads
 app.use(cors()); // Enables CORS for all requests
 
 // Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/treeWays', {
+mongoose.connect('mongodb+srv://admin:mc2jhQRy4jP8mZyG@mern-hotel-booking.hq0m3.mongodb.net/?retryWrites=true&w=majority&appName=holidays', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
