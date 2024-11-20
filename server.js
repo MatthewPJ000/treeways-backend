@@ -19,6 +19,7 @@ mongoose.connect('mongodb+srv://admin:mc2jhQRy4jP8mZyG@mern-hotel-booking.hq0m3.
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
+
 // Use the data routes
 app.use('/api/data', dataRoutes);
 
