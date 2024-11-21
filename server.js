@@ -1,30 +1,31 @@
+require('dotenv').config(); // Load environment variables at the top
+
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const dataRoutes = require('./routes/dataRoutes');
-const categoryRoutes = require("./routes/categoryRoutes");
-const cors = require('cors'); // Import cors
+const categoryRoutes = require('./routes/categoryRoutes');
+const cors = require('cors');
 
 const app = express();
 
-// Middleware to parse incoming JSON data
-app.use(bodyParser.json()); // Parses incoming requests with JSON payloads
-app.use(cors()); // Enables CORS for all requests
+// Middleware
+app.use(bodyParser.json());
+app.use(cors());
 
-// Connect to MongoDB
-mongoose.connect('mongodb+srv://admin:mc2jhQRy4jP8mZyG@mern-hotel-booking.hq0m3.mongodb.net/?retryWrites=true&w=majority&appName=holidays', {
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_CONNECTION_STRING, {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
 })
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-
-// Use the data routes
+// Routes
 app.use('/api/data', dataRoutes);
+app.use('/api/category', categoryRoutes);
 
-app.use("/api/category", categoryRoutes);
-// Start the server
+// Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
