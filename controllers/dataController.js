@@ -1,26 +1,27 @@
 const getModelByCategory = require('../models/Data'); // Adjust the path as needed
 
 
-// Add helper function to update max absolute TotalResult
-async function updateMaxAbsTotalResultFlag(DataModel) {
+async function updateMinAbsTotalResultFlag(DataModel) {
   // Reset isMaxAbsResult for all documents
   await DataModel.updateMany({}, { isMaxAbsResult: false });
 
-  // Find the document with the max absolute TotalResult
-  const maxAbsResultDoc = await DataModel.aggregate([
+  // Find the document with the minimum absolute TotalResult, considering only finalChild = true
+  const minAbsResultDoc = await DataModel.aggregate([
+    { $match: { finalChild: true } }, // Filter only documents where finalChild is true
     { $addFields: { absTotalResult: { $abs: "$TotalResult" } } },
-    { $sort: { absTotalResult: -1 } },
+    { $sort: { absTotalResult: 1 } }, // Sort in ascending order to find the min abs value
     { $limit: 1 }
   ]);
 
-  if (maxAbsResultDoc.length > 0) {
-    // Update isMaxAbsResult for the document with the highest absolute TotalResult
+  if (minAbsResultDoc.length > 0) {
+    // Update isMaxAbsResult (or rename as needed) for the document with the smallest absolute TotalResult
     await DataModel.updateOne(
-      { _id: maxAbsResultDoc[0]._id },
-      { isMaxAbsResult: true }
+      { _id: minAbsResultDoc[0]._id },
+      { isMaxAbsResult: true } // Rename to isMinAbsResult if more meaningful
     );
   }
 }
+
 
 exports.saveData = async (req, res) => {
   const { title, inputs, componentName, result } = req.body;
@@ -79,13 +80,24 @@ exports.saveData = async (req, res) => {
         parentComponentName,
         result,
         TotalResult: Math.round(currentTotalResult * 100) / 100,
+        finalChild: true, // New components are assumed to be final children initially
       });
 
       updatedDocument = await newData.save();
     }
 
+    // Update parent's totalChild field
+    if (parentComponentName !== 'root') {
+      const parentComponent = await DataModel.findOne({ componentName: parentComponentName });
+      if (parentComponent) {
+        parentComponent.finalChild = false;
+        await parentComponent.save();
+      }
+      console.log("parentComponent",parentComponent)
+    }
+
     // Update isMaxAbsResult for the document with the maximum absolute TotalResult
-    await updateMaxAbsTotalResultFlag(DataModel);
+    await updateMinAbsTotalResultFlag(DataModel);
 
     // Update child components' TotalResult if any
     const childComponents = await DataModel.find({ componentName: { $regex: `^${componentName}>` } });
@@ -144,6 +156,12 @@ exports.getComponentByName = async (req, res) => {
 
   try {
     const component = await DataModel.findOne({ componentName }); 
+
+    // Handle the case when the component is not found
+    if (!component) {
+      return res.status(404).json({ message: `Component '${componentName}' not found in category '${category}'` });
+    }
+
     const response = {
       title: component.title,
       inputs: component.inputs.map(input => ({
@@ -155,14 +173,15 @@ exports.getComponentByName = async (req, res) => {
     res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching component:', error);
-
+    res.status(500).json({ message: 'Failed to fetch component', error: error.message });
   }
 };
+
 
 exports.deleteComponentByName = async (req, res) => {
   const category = req.params.selectedCategory; // Get category from request parameters
   const componentName = req.params.componentName; // Get componentName from request parameters
-  
+
   if (!category || !componentName) {
     return res.status(400).json({ message: 'Category and componentName are required' });
   }
@@ -181,12 +200,35 @@ exports.deleteComponentByName = async (req, res) => {
       return res.status(404).json({ message: 'No components found with the specified prefix' });
     }
 
+    // Extract parent component name from the given componentName
+    let parentComponentName = 'root';
+    if (componentName.includes('>')) {
+      const parts = componentName.split('>');
+      parentComponentName = parts.slice(0, parts.length - 1).join('>');
+    }
+
+    if (parentComponentName !== 'root') {
+      // Check if the parent component still has any child components
+      const hasChildren = await DataModel.exists({
+        componentName: { $regex: `^${parentComponentName}>` }
+      });
+
+      if (!hasChildren) {
+        // If no children exist, update finalChild of the parent component to true
+        await DataModel.updateOne(
+          { componentName: parentComponentName },
+          { finalChild: true }
+        );
+      }
+    }
+
     return res.status(200).json({ message: `${result.deletedCount} component(s) deleted successfully` });
   } catch (error) {
     console.error('Error deleting components:', error);
     return res.status(500).json({ message: 'Failed to delete components', error });
   }
 };
+
 
 
 exports.deleteCategory = async (req, res) => {

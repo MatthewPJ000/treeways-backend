@@ -18,6 +18,7 @@ const DataSchema = new mongoose.Schema({
   result: { type: Number, default: null },
   TotalResult: { type: Number , default: null },
   isMaxAbsResult: { type: Boolean, default: false }, // Flag to indicate max absolute TotalResult
+  finalChild: {type: Boolean, default: true }
 });
 
 // Function to create a model based on the category
